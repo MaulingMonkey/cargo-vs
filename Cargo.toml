@@ -2,7 +2,7 @@
 
 [package]
 name            = "cargo-vs"
-version         = "0.0.0-git"
+version         = "0.1.0"
 authors         = ["MaulingMonkey <git@maulingmonkey.com>"]
 edition         = "2018"
 repository      = "https://github.com/MaulingMonkey/cargo-vs"

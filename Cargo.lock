@@ -2,7 +2,7 @@
 # It is not intended for manual editing.
 [[package]]
 name = "cargo-vs"
-version = "0.0.0-git"
+version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
