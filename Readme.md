@@ -5,7 +5,7 @@
 [![%23![forbid(unsafe_code)]](https://img.shields.io/github/search/MaulingMonkey/cargo-vs/unsafe%2bextension%3Ars?color=green&label=%23![forbid(unsafe_code)])](https://github.com/MaulingMonkey/cargo-vs/search?q=forbid%28unsafe_code%29+extension%3Ars)
 [![rust: stable](https://img.shields.io/badge/rust-stable-yellow.svg)](https://gist.github.com/MaulingMonkey/c81a9f18811079f19326dac4daa5a359#minimum-supported-rust-versions-msrv)
 [![License](https://img.shields.io/crates/l/cargo_vs.svg)](https://github.com/MaulingMonkey/cargo-vs)
-[![Build Status](https://travis-ci.com/MaulingMonkey/cargo-vs.svg?branch=master)](https://travis-ci.com/MaulingMonkey/cargo-vs)
+[![Build Status](https://github.com/MaulingMonkey/cargo-vs/workflows/Rust/badge.svg)](https://github.com/MaulingMonkey/cargo-vs/actions?query=workflow%3Arust)
 
 
 
