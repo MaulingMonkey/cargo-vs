@@ -209,13 +209,29 @@ fn create_vs_makefile_vcxproj(context: &Context, package: &metadata::PackageId, 
     write!(o, "    <PropertyGroup Label=\"UserMacros\" />\r\n")?;
     for arch in ARCHES.iter().copied() {
         for config in CONFIGS.iter().copied() {
+            let bin_subdir = if bin.kind.iter().any(|kind| kind == "example") {
+                r"examples\"
+            } else {
+                ""
+            };
+
+            let bin_flag = if bin.kind.iter().any(|kind| kind == "example") {
+                format!("--example {}", bin.name)
+            } else if bin.kind.iter().any(|kind| kind == "bin") {
+                format!("--bin {}", bin.name)
+            } else {
+                format!("--all-targets")
+            };
+
             let defines_arch    = if arch.vs_proj_name == "Win32" { "_WIN32;" } else { "" };
             let defines_config  = if config.vs_name == "Debug" { "_DEBUG;" } else { "NDEBUG;" };
+
+            let build = format!("cargo +stable-{arch}-pc-windows-msvc build --target {arch}-pc-windows-msvc {bin_flag}{flags}\r\n", arch=arch.cargo_name, bin_flag=bin_flag, flags=config.cargo_build_flags);
             write!(o, "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{arch}'\">\r\n", config=config.vs_name, arch=arch.vs_proj_name)?;
-            write!(o, "    <NMakeBuildCommandLine>cargo +stable-{arch}-pc-windows-msvc build --target {arch}-pc-windows-msvc{flags}</NMakeBuildCommandLine>\r\n", arch=arch.cargo_name, flags=config.cargo_build_flags)?;
-            write!(o, "    <NMakeOutput>$(SolutionDir)..\\target\\{arch}-pc-windows-msvc\\{config}\\{bin_name}.exe</NMakeOutput>\r\n", arch=arch.cargo_name, config=config.target_dir, bin_name=bin.name)?;
+            write!(o, "    <NMakeBuildCommandLine>{}</NMakeBuildCommandLine>\r\n", build)?;
+            write!(o, "    <NMakeOutput>$(SolutionDir)..\\target\\{arch}-pc-windows-msvc\\{config}\\{bin_subdir}{bin_name}.exe</NMakeOutput>\r\n", arch=arch.cargo_name, config=config.target_dir, bin_subdir=bin_subdir, bin_name=bin.name)?;
             write!(o, "    <NMakeCleanCommandLine>cargo clean</NMakeCleanCommandLine>\r\n")?;
-            write!(o, "    <NMakeReBuildCommandLine>cargo clean &amp;&amp; cargo +stable-{} build{}</NMakeReBuildCommandLine>\r\n", arch.cargo_name, config.cargo_build_flags)?;
+            write!(o, "    <NMakeReBuildCommandLine>cargo clean &amp;&amp; {}</NMakeReBuildCommandLine>\r\n", build)?;
             write!(o, "    <NMakePreprocessorDefinitions>{}{}$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>\r\n", defines_arch, defines_config)?;
             write!(o, "    <OutDir>$(SolutionDir)..\\target\\{arch}-pc-windows-msvc\\{config}\\</OutDir>", arch=arch.cargo_name, config=config.target_dir)?;
             write!(o, "    <IntDir>$(SolutionDir)int\\{arch}-pc-windows-msvc\\{config}\\</IntDir>", arch=arch.cargo_name, config=config.target_dir)?; // Putting IntDir inside target would cause VS to choke on clean
