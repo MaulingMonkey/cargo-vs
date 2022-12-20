@@ -40,7 +40,7 @@ This could be "fixed" by clearing a bunch of environment variables, but...
 <h2 name="why-not-dot-vs">Why makefile projects instead of .vs/*.vs.json?</h2>
 
 * Easier to retrofit support for legacy Visual Studio versions
-* Presumably easier to integrate into your existing C++/C# msuild mess
+* Presumably easier to integrate into your existing C++/C# msbuild mess
 * I can't figure out how to launch the graphics debugger with .vs/*
 * Proper build matricies
 
