@@ -46,10 +46,10 @@ const GITIGNORE : &'static str = concat!(
 
 
 
-pub fn run() {
+pub fn run(vs: Vs) {
     let meta = metadata::Root::get().unwrap_or_else(|err| { eprintln!("error parsing `cargo metadata`: {}", err); exit(1) });
-    let vs = create_vs_dir(&meta).unwrap_or_else(|err| { eprintln!("error creating vs directory: {}", err); exit(1) });
-    let context = Context { meta, vs, _non_exhaustive: () };
+    let vs_out = create_vs_dir(&meta).unwrap_or_else(|err| { eprintln!("error creating vs directory: {}", err); exit(1) });
+    let context = Context { vs, meta, vs_out, _non_exhaustive: () };
 
     let mut errors = false;
     create_vs_sln(&context).unwrap_or_else(|err| { eprintln!("{}", err); errors = true; });
@@ -57,37 +57,52 @@ pub fn run() {
 }
 
 fn create_vs_dir(meta: &metadata::Root) -> io::Result<PathBuf> {
-    let vs = meta.workspace.dir.join("vs");
-    match std::fs::create_dir(&vs) {
+    let vs_out = meta.workspace.dir.join("vs");
+    match std::fs::create_dir(&vs_out) {
         Ok(()) => {
-            std::fs::write(vs.join(".gitignore"), GITIGNORE).map_err(|err| io::Error::new(err.kind(), format!("unable to create .gitignore: {}", err)))?; // XXX: remap err for more context?
-            Ok(vs)
+            std::fs::write(vs_out.join(".gitignore"), GITIGNORE).map_err(|err| io::Error::new(err.kind(), format!("unable to create .gitignore: {}", err)))?; // XXX: remap err for more context?
+            Ok(vs_out)
         },
-        Err(err) if err.kind() == io::ErrorKind::AlreadyExists => Ok(vs),
+        Err(err) if err.kind() == io::ErrorKind::AlreadyExists => Ok(vs_out),
         Err(err) => Err(err),
     }
 }
 
-struct Context {
+pub struct Vs<'a> {
+    /// aka "vs2017"
+    pub nnnn:              &'a str,
+
+    /// aka "Visual Studio 15"
+    pub sln_comment:        &'a str,
+    /// aka "15.0.28307.645" (for VisualStudioVersion)
+    pub sln_vsv:            &'a str,
+
+    /// aka "15.0"
+    pub vcxproj_version:    &'a str,
+    /// aka "PlatformToolset"
+    pub platform_toolset:   &'a str,
+}
+
+struct Context<'a> {
+    vs:     Vs<'a>,
     meta:   metadata::Root,
-    vs:     PathBuf,
+    vs_out: PathBuf,
 
     _non_exhaustive: ()
 }
 
 fn create_vs_sln(context: &Context) -> io::Result<()> {
-    let Context { meta, vs, .. } = context;
-
-    let vs_nnnn = "vs2017";
+    let Context { vs, meta, vs_out, .. } = context;
+    let Vs { sln_comment, sln_vsv, .. } = vs;
 
     //let mut sln = meta.workspace.dir.file_name().ok_or(io::ErrorKind::InvalidInput)?.to_os_string();
     //sln.push(OsStr::new("-"));
     let mut sln = OsString::new();
-    sln.push(OsStr::new(vs_nnnn));
+    sln.push(OsStr::new(vs.nnnn));
     sln.push(OsStr::new(".sln"));
-    let sln = vs.join(sln);
+    let sln = vs_out.join(sln);
 
-    let projects_dir = vs.join(vs_nnnn);
+    let projects_dir = vs_out.join(vs.nnnn);
     std::fs::create_dir_all(&projects_dir)?;
 
     let mut o = File::create(&sln).map_err(|err| io::Error::new(err.kind(), format!("error creating {}: {}", sln.display(), err)))?;
@@ -95,8 +110,8 @@ fn create_vs_sln(context: &Context) -> io::Result<()> {
 
     // VS2017 - I should add support for more editions + SKUs eventually...
     write!(o, "Microsoft Visual Studio Solution File, Format Version 12.00\r\n")?;
-    write!(o, "# Visual Studio 15\r\n")?;
-    write!(o, "VisualStudioVersion = 15.0.28307.645\r\n")?;
+    write!(o, "# {sln_comment}\r\n")?;
+    write!(o, "VisualStudioVersion = {sln_vsv}\r\n")?;
     write!(o, "MinimumVisualStudioVersion = 10.0.40219.1\r\n")?;
     let uuid_sln = Uuid::new_v5(&Uuid::NAMESPACE_OID, sln.to_string_lossy().as_bytes());
 
@@ -109,7 +124,7 @@ fn create_vs_sln(context: &Context) -> io::Result<()> {
             let uuid_project_type = "8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942"; // makefile
             let uuid_project = project_guid(context, &package.id, &target);
 
-            write!(o, "Project(\"{{{uuid_project_type}}}\") = \"{target_name}\", \"{vs_nnnn}\\{target_name}.vcxproj\", \"{{{uuid_project}}}\"\r\n", uuid_project_type=uuid_project_type, target_name=target.name, vs_nnnn=vs_nnnn, uuid_project=uuid_project.to_hyphenated_ref().encode_upper(&mut uuid_buf))?;
+            write!(o, "Project(\"{{{uuid_project_type}}}\") = \"{target_name}\", \"{vs_nnnn}\\{target_name}.vcxproj\", \"{{{uuid_project}}}\"\r\n", uuid_project_type=uuid_project_type, target_name=target.name, vs_nnnn=vs.nnnn, uuid_project=uuid_project.to_hyphenated_ref().encode_upper(&mut uuid_buf))?;
             write!(o, "EndProject\r\n")?;
         }
     }
@@ -157,7 +172,7 @@ fn create_vs_sln(context: &Context) -> io::Result<()> {
 }
 
 fn create_vs_makefile_vcxproj(context: &Context, package: &metadata::PackageId, bin: &metadata::PackageTarget) -> io::Result<()> {
-    let path = context.vs.join("vs2017").join(&format!("{}.vcxproj", bin.name));
+    let path = context.vs_out.join(context.vs.nnnn).join(&format!("{}.vcxproj", bin.name));
     let mut o = File::create(&path)?;
     let mut uuid_buf = [b'!'; 40];
 
@@ -180,7 +195,7 @@ fn create_vs_makefile_vcxproj(context: &Context, package: &metadata::PackageId, 
     }
     write!(o, "  </ItemGroup>\r\n")?;
     write!(o, "  <PropertyGroup Label=\"Globals\">\r\n")?;
-    write!(o, "    <VCProjectVersion>15.0</VCProjectVersion>\r\n")?;
+    write!(o, "    <VCProjectVersion>{}</VCProjectVersion>\r\n", context.vs.vcxproj_version)?;
     write!(o, "    <ProjectGuid>{{{}}}</ProjectGuid>\r\n", project_guid(context, package, bin).to_hyphenated_ref().encode_upper(&mut uuid_buf))?;
     write!(o, "    <Keyword>Win32Proj</Keyword>\r\n")?;
     write!(o, "  </PropertyGroup>\r\n")?;
@@ -190,7 +205,7 @@ fn create_vs_makefile_vcxproj(context: &Context, package: &metadata::PackageId, 
             write!(o, "  <PropertyGroup Condition=\"'$(Configuration)|$(Platform)'=='{config}|{arch}'\" Label=\"Configuration\">\r\n", config=config.vs_name, arch=arch.vs_proj_name)?;
             write!(o, "    <ConfigurationType>Makefile</ConfigurationType>\r\n")?;
             write!(o, "    <UseDebugLibraries>{}</UseDebugLibraries>\r\n", config.vs_name == "Debug")?;
-            write!(o, "    <PlatformToolset>v141</PlatformToolset>\r\n")?;
+            write!(o, "    <PlatformToolset>{}</PlatformToolset>\r\n", context.vs.platform_toolset)?;
             write!(o, "  </PropertyGroup>\r\n")?;
         }
     }
@@ -251,6 +266,6 @@ fn create_vs_makefile_vcxproj(context: &Context, package: &metadata::PackageId, 
 }
 
 fn project_guid(context: &Context, package: &metadata::PackageId, bin: &metadata::PackageTarget) -> Uuid {
-    let name = format!("{}|{}|{}", context.vs.display(), package, bin.name);
+    let name = format!("{}|{}|{}", context.vs_out.display(), package, bin.name);
     Uuid::new_v5(&Uuid::NAMESPACE_OID, name.as_bytes())
 }

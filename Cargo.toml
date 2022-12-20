@@ -22,3 +22,11 @@ toml            = "0.5"
 [[bin]]
 name            = "cargo-vs2017"
 path            = "src/vs2017.rs"
+
+[[bin]]
+name            = "cargo-vs2019"
+path            = "src/vs2019.rs"
+
+[[bin]]
+name            = "cargo-vs2022"
+path            = "src/vs2022.rs"
