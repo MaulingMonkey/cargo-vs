@@ -57,7 +57,7 @@ pub fn run(vs: Vs) {
 }
 
 fn create_vs_dir(meta: &metadata::Root) -> io::Result<PathBuf> {
-    let vs_out = meta.workspace.dir.join("vs");
+    let vs_out = meta.workspace_root.join("vs");
     match std::fs::create_dir(&vs_out) {
         Ok(()) => {
             std::fs::write(vs_out.join(".gitignore"), GITIGNORE).map_err(|err| io::Error::new(err.kind(), format!("unable to create .gitignore: {}", err)))?; // XXX: remap err for more context?
@@ -95,7 +95,7 @@ fn create_vs_sln(context: &Context) -> io::Result<()> {
     let Context { vs, meta, vs_out, .. } = context;
     let Vs { sln_comment, sln_vsv, .. } = vs;
 
-    //let mut sln = meta.workspace.dir.file_name().ok_or(io::ErrorKind::InvalidInput)?.to_os_string();
+    //let mut sln = meta.workspace_root.file_name().ok_or(io::ErrorKind::InvalidInput)?.to_os_string();
     //sln.push(OsStr::new("-"));
     let mut sln = OsString::new();
     sln.push(OsStr::new(vs.nnnn));
